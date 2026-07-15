@@ -24,6 +24,7 @@ jobs:
       #   timeout-minutes: 5
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      
       - name: NPM Install
         run: npm install # Add your specific npm install command
       - name: Install Trivy
@@ -34,6 +35,20 @@ jobs:
           echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
           sudo apt-get install trivy -y
+          
           # Scanning files
           trivy fs . > trivyfs.txt
           cat trivyfs.txt
+
+      - name: Docker Build and push
+        run: |
+          docker build -t candycrushgithubaction .
+          docker tag candycrushgithubaction ramkiprabhu28/candycrushgithubaction:latest
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+          docker push ramkiprabhu28/candycrushgithubaction:latest
+        env:
+          DOCKER_CLI_ACI: 1
+
+      - name: Image scan
+        run: trivy image ramkiprabhu28/candycrushgithubaction:latest > trivyimage.txt  
+    
