@@ -99,5 +99,5 @@ jobs:
         run: |
          pwd
          ls
-         kubectl apply -f "CandyCrush/GitHub Actions/deployment-service.yml"
+         kubectl apply -f deployment-service.yml
         
