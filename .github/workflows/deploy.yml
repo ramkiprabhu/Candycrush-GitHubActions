@@ -1,9 +1,10 @@
 name: Build and Deploy
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - main
+    - main
 
 jobs:
   build:
@@ -95,5 +96,9 @@ jobs:
           kubectl get nodes
       # Deploy Eks cluster
       - name: Deploy to EKS
-        run: kubectl apply -f deployment-service.yml
+        run: |
+         ls
+         cd /ramkiprabhu/Candycrush-GitHubActions
+         ls
+         kubectl apply -f deployment-service.yml
         
