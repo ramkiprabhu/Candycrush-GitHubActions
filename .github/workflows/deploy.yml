@@ -1,54 +1,90 @@
-name: Build
+name: Build and Deploy
 
 on:
   push:
     branches:
       - main
 
-
 jobs:
   build:
-    name: Build
+    name: Build, Scan and Push
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: sonarsource/sonarqube-scan-action@master
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      # If you wish to fail your job when the Quality Gate is red, uncomment the
-      # following lines. This would typically be used to fail a deployment.
-      # - uses: sonarsource/sonarqube-quality-gate-action@master
-      #   timeout-minutes: 5
-      #   env:
-      #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      
-      - name: NPM Install
-        run: npm install # Add your specific npm install command
+
+      - name: Install Node Modules
+        run: npm install
+
       - name: Install Trivy
         run: |
-          # Installing Trivy
-          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update
-          sudo apt-get install trivy -y
-          
-          # Scanning files
-          trivy fs . > trivyfs.txt
-          cat trivyfs.txt
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
 
-      - name: Docker Build and push
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | \
+          gpg --dearmor | \
+          sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+
+          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -cs) main" | \
+          sudo tee /etc/apt/sources.list.d/trivy.list
+
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: File System Scan
+        run: trivy fs .
+
+      - name: Build Docker Image
         run: |
           docker build -t candycrushgithubaction .
-          docker tag candycrushgithubaction ramkiprabhu28/candycrushgithubaction:latest
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
-          docker push ramkiprabhu28/candycrushgithubaction:latest
-        env:
-          DOCKER_CLI_ACI: 1
 
-      - name: Image scan
-        run: trivy image ramkiprabhu28/candycrushgithubaction:latest > trivyimage.txt  
-    
+      - name: Tag Docker Image
+        run: |
+          docker tag candycrushgithubaction ramkiprabhu28/candycrushgithubaction:latest
+
+      - name: Docker Login
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Push Docker Image
+        run: |
+          docker push ramkiprabhu28/candycrushgithubaction:latest
+
+      - name: Image Scan
+        run: |
+          trivy image ramkiprabhu28/candycrushgithubaction:latest
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull Docker Image
+        run: |
+          docker pull ramkiprabhu28/candycrushgithubaction:latest
+
+      - name: Scan Docker Image
+        run: |
+          trivy image ramkiprabhu28/candycrushgithubaction:latest
+
+      - name: Stop Existing Container
+        run: |
+          docker stop candycrush || true
+          docker rm candycrush || true
+
+      - name: Deploy Container
+        run: |
+          docker run -d \
+            --name candycrush \
+            -p 3000:3000 \
+            ramkiprabhu28/candycrushgithubaction:latest
