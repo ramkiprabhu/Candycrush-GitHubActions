@@ -36,3 +36,4 @@ jobs:
           sudo apt-get install trivy -y
           # Scanning files
           trivy fs . > trivyfs.txt
+          cat trivyfs.txt
