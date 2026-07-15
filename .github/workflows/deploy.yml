@@ -97,8 +97,7 @@ jobs:
       # Deploy Eks cluster
       - name: Deploy to EKS
         run: |
+         pwd
          ls
-         cd /ramkiprabhu/Candycrush-GitHubActions
-         ls
-         kubectl apply -f "candycrush/github actions/deployment.yaml"
+         kubectl apply -f "candycrush/github actions/deployment-service.yml"
         
