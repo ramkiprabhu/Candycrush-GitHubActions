@@ -100,5 +100,5 @@ jobs:
          ls
          cd /ramkiprabhu/Candycrush-GitHubActions
          ls
-         kubectl apply -f deployment-service.yml
+         kubectl apply -f "candycrush/github actions/deployment.yaml"
         
