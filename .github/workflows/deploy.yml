@@ -88,3 +88,6 @@ jobs:
             --name candycrush \
             -p 3000:3000 \
             ramkiprabhu28/candycrushgithubaction:latest
+      # Configure Eks cluster
+      - name: Update kubeconfig
+        run: aws eks --region ap-south-1 update-kubeconfig --name EKS_CLOUD
